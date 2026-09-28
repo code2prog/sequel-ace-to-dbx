@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+*.json
+*.plist
+*.spf
+*.spfs/
+.DS_Store
