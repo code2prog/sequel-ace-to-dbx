@@ -1,19 +1,21 @@
 # Sequel Ace to DBX
 
-A small terminal tool for choosing Sequel Ace connections and exporting them to a password-protected file that DBX can import.
+Choose Sequel Ace connections in a terminal and save them, with their passwords, as an encrypted file for DBX. **The tool creates an import file; it does not add connections to DBX by itself.** No DBX plugin is required.
 
-The tool reads saved Favorites, including connections that are currently disconnected. You can also provide Sequel Ace `.spfs` sessions and `.spf` connection files. A session contains the connected windows and tabs that Sequel Ace saved when you chose **File → Save Session**.
+It reads saved Sequel Ace Favorites, including disconnected connections. You can also add saved `.spfs` sessions and `.spf` connection files. This transfers connection settings, not the contents of your databases.
 
 ## Requirements
 
-- macOS with Sequel Ace connection data (Sequel Ace does not need to be running)
+- macOS with Sequel Ace connection data; Sequel Ace does not need to be running
 - Python 3.9 or newer
-- Node.js 18 or newer (used for encryption and encrypted `.spf` files)
+- Node.js 18 or newer
 - DBX with configuration import support
 
 No Python packages need to be installed.
 
-## Install and run
+## Quick start
+
+### 1. Run the exporter
 
 ```bash
 git clone https://github.com/code2prog/sequel-ace-to-dbx.git
@@ -21,55 +23,77 @@ cd sequel-ace-to-dbx
 python3 sequel_ace_to_dbx.py
 ```
 
-The terminal screen starts with all discovered connections selected. Use **↑/↓** (or **j/k**) to move, **Space** to toggle, **/** to search, **A** to select all visible items, **N** to clear visible items, **Enter** to export, and **Q** to quit. Search matches the connection name, host, source, and Favorites group. Selection changes made while searching remain in place when you clear the search.
+The tool automatically lists Favorites saved for the current macOS user. All discovered connections start selected. Change the selection as needed, then press **Enter**. Choose an output path and enter an export passphrase twice. The suggested path is `~/Desktop/dbx-connections.json`.
 
-After you press Enter, choose the output path and enter a passphrase twice. The output is encrypted DBX JSON and is created with owner-only permissions. In DBX, choose **Import** above the connection list and select the JSON file. Enter the same passphrase.
-
-You can set the output path on the command line:
+You can provide the output path when starting the tool:
 
 ```bash
 python3 sequel_ace_to_dbx.py ~/Desktop/dbx-connections.json
 ```
 
-An existing output file is never overwritten.
+The file is encrypted and never overwrites an existing file. Keep the passphrase: DBX will ask for it during import.
 
-## How connections are found
+### 2. Import the file into DBX
 
-By default, the tool reads Sequel Ace's saved Favorites for the current macOS user from:
+1. Open DBX and click **Import** in the connection sidebar header.
+2. Choose the JSON file created by the exporter, for example `~/Desktop/dbx-connections.json`.
+3. Enter the **export passphrase**. DBX decrypts the file and shows a preview before saving connections.
+4. Select the connections to import and complete the import. DBX selects all of them by default. If offered, choose whether to apply their sidebar groups and ordering.
+5. Check the imported connections in the DBX sidebar and try connecting to one.
+
+DBX may skip a connection that already exists with the same name, host, and port. See [DBX's configuration import documentation](https://github.com/t8y2/dbx/blob/main/docs/content/docs/config-export.mdx) for its import behavior.
+
+## Selecting connections
+
+| Key | Action |
+| --- | --- |
+| **↑ / ↓** or **j / k** | Move through the list |
+| **Space** | Select or deselect the highlighted connection |
+| **/** | Search by name, host, source, or Favorites group |
+| **A / N** | Select all or clear all visible connections |
+| **Enter** | Continue to export |
+| **Q** | Quit without exporting |
+
+Search filters the visible list; selections made while searching remain when you clear the search. Favorite passwords are read from Keychain **after** you finish selecting connections.
+
+## Where connections come from
+
+By default, the tool reads this fixed path for the current macOS user:
 
 ```text
 ~/Library/Containers/com.sequel-ace.sequel-ace/Data/Library/Application Support/Sequel Ace/Data/Favorites.plist
 ```
 
-This fixed path is used automatically; the tool does not detect the Sequel Ace application or search the disk for its data. Favorites are listed whether they are currently connected or disconnected. If your `Favorites.plist` is elsewhere, specify it explicitly:
+It does not detect the Sequel Ace application or search the disk for connection files. To use a Favorites file in another location:
 
 ```bash
 python3 sequel_ace_to_dbx.py --favorites "/path/to/Favorites.plist"
 ```
 
-The tool does not search for `.spfs` sessions or `.spf` connection files. Add them with `--session` or `--spf` as described below. If the default Favorites file is missing and you do not provide another source, the tool exits with an error.
+If the default file is missing and you provide no other source, the tool exits with an error.
 
-## Include open connections outside Favorites
+### Include open connections outside Favorites
 
-In Sequel Ace, choose **File → Save Session**. Enable **Include passwords** and **Encrypt with password**, then save a `.spfs` file. Pass it to the tool:
+In Sequel Ace, choose **File → Save Session**, enable **Include passwords** and **Encrypt with password**, and save a `.spfs` file. Then run:
 
 ```bash
 python3 sequel_ace_to_dbx.py ~/Desktop/dbx-connections.json --session "/path/to/My Session.spfs"
 ```
 
-You can repeat `--session` and `--spf` to include several files. The tool asks for the session's encryption password once and lists each connection for selection. If a selected session connection matches a selected Favorite and contains its database or SSH password, the tool reuses that password instead of asking Keychain for it. The tool merges duplicate connections with the same name, host, port, user, and database.
+Use `--spf "/path/to/Connection.spf"` for an individual saved connection. You can repeat `--session` and `--spf` to include several files; the tool does not discover them automatically. For an encrypted session, it asks for the session password once before showing the selection screen.
 
-Sequel Ace only saves **currently connected** windows and tabs in a session. A disconnected connection is available to this tool if it was saved as a Favorite or an `.spf` file. An unsaved, disconnected connection cannot be recovered from Sequel Ace's files.
+Sequel Ace saves only **currently connected** windows and tabs in a session. Disconnected connections are available if saved as Favorites or `.spf` files. An unsaved, disconnected connection cannot be recovered from Sequel Ace's files.
 
-## Keychain and security
+If a selected session connection matches a selected Favorite and contains its database or SSH password, the tool reuses that password instead of asking Keychain for it. Duplicate entries with the same name, host, port, user, and database are merged in the export file.
 
-Passwords for selected Favorites are read from the macOS Keychain. macOS may ask for access separately for each Keychain item; unlocking the Keychain once does not grant another program access to every saved password. The selection screen itself does not read any Favorite passwords. Sequel Ace session files with **Include passwords** can reduce Keychain prompts for matching connections.
+## Passwords and limitations
 
-The tool never writes a plaintext password export. It reads passwords into process memory, encrypts the DBX file with PBKDF2-SHA256 and AES-256-GCM, and writes the file with mode `0600`. Keep the passphrase safe, and do not commit exported files to Git.
+- macOS may ask for Keychain access separately for each selected Favorite password. Unlocking Keychain once does not grant this tool access to every item.
+- The export file is encrypted with PBKDF2-SHA256 and AES-256-GCM and written with owner-only permissions (`0600`). The tool does not write a plaintext password export. Do not commit exported files to Git.
+- TCP/IP and SSH tunnel MySQL connections are supported. If you select an unsupported connection type, the export stops with an error rather than silently omitting it. Socket, AWS IAM, and Vault connection settings are not converted.
+- Saved SQL queries, database schema, and database contents are not exported.
 
-The current converter supports Sequel Ace TCP/IP and SSH tunnel MySQL connections. If a selected connection uses an unsupported type, the export stops with an error instead of silently dropping it. Socket, AWS IAM, and Vault connection settings are not converted.
-
-## Options
+## Command-line options
 
 ```text
 python3 sequel_ace_to_dbx.py [output.json] [--favorites Favorites.plist]
