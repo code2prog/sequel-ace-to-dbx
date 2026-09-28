@@ -6,7 +6,7 @@ The tool reads saved Favorites, including connections that are currently disconn
 
 ## Requirements
 
-- macOS with Sequel Ace installed
+- macOS with Sequel Ace connection data (Sequel Ace does not need to be running)
 - Python 3.9 or newer
 - Node.js 18 or newer (used for encryption and encrypted `.spf` files)
 - DBX with configuration import support
@@ -32,6 +32,22 @@ python3 sequel_ace_to_dbx.py ~/Desktop/dbx-connections.json
 ```
 
 An existing output file is never overwritten.
+
+## How connections are found
+
+By default, the tool reads Sequel Ace's saved Favorites for the current macOS user from:
+
+```text
+~/Library/Containers/com.sequel-ace.sequel-ace/Data/Library/Application Support/Sequel Ace/Data/Favorites.plist
+```
+
+This fixed path is used automatically; the tool does not detect the Sequel Ace application or search the disk for its data. Favorites are listed whether they are currently connected or disconnected. If your `Favorites.plist` is elsewhere, specify it explicitly:
+
+```bash
+python3 sequel_ace_to_dbx.py --favorites "/path/to/Favorites.plist"
+```
+
+The tool does not search for `.spfs` sessions or `.spf` connection files. Add them with `--session` or `--spf` as described below. If the default Favorites file is missing and you do not provide another source, the tool exits with an error.
 
 ## Include open connections outside Favorites
 
